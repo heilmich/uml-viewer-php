@@ -1,0 +1,11 @@
+{:title "PHP shop"
+ :src "examples/php-shop/src"
+ :prefix "Shop"
+ :lang :php
+ :out "examples/php-shop.edn"
+ :hierarchical true
+ :foreign [Psr DateTimeImmutable DomainException RuntimeException PDO PDOException]
+ :order [Http Application Infrastructure Domain]
+ :levels [[Domain]
+          [Application]
+          [Infrastructure Http]]}
