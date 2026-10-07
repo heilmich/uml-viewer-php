@@ -4,6 +4,7 @@
             [quil.applet :as applet]
             [quil.core :as q]
             [quil.middleware :as m]
+            [uml-viewer.adapters.agent :as agent]
             [uml-viewer.application.detail :as detail]
             [uml-viewer.application.document :as document]
             [uml-viewer.adapters.draw :as draw]
@@ -43,7 +44,7 @@
        "   diagram above Proposals to return to the namespace tree. If instructed,\n"
        "   add a named proposal to :proposals in the policy (default name is a\n"
        "   timestamp) and regenerate the IR.\n"
-       "TypeScript, Rust, and Python are scanners beside Clojure. A Clojure project keeps\n"
+       "TypeScript, Rust, Python, and PHP are scanners beside Clojure. A Clojure project keeps\n"
        ":lang :clojure (the default) and the CRAP and mutation steps below.\n"
        "Another language sets :lang. More than one language sets :sources, each\n"
        "entry {:lang :root :prefix?}. The policy :prefix is stripped to make\n"
@@ -54,16 +55,26 @@
        "Python is one class per .py module. import and from-import are dependencies.\n"
        "class Child(Base) is inheritance when Base is a project module. A base of\n"
        "Protocol or ABC is implements.\n"
+       "PHP (:lang :php) is one class per class, interface, trait, or enum. The\n"
+       "PHP namespace is the tree. :prefix is the root namespace from\n"
+       "composer.json autoload psr-4 (App for App\\Domain\\User). extends is\n"
+       "inheritance, implements is implements, a used trait is inheritance\n"
+       "labeled use, and new, static calls, type hints, attributes, instanceof,\n"
+       "and catch are dependencies.\n"
+       "A project with no :ir alias in deps.edn (a PHP project, say) keeps its\n"
+       "policy at examples/<dir>.policy.edn with :out examples/<dir>.edn, where\n"
+       "<dir> is this directory's name, and regenerates the IR with\n"
+       "clojure -Sdeps '{:deps {uml-viewer/uml-viewer {:local/root \".uml-viewer/uml-viewer\"}}}' -M -m uml-viewer.main.ir-generator examples/<dir>.policy.edn\n"
        "For a non-Clojure language, run that language's CRAP and mutation tools\n"
        "when they exist. Snapshots join by the class :ns, then by the class id.\n"
        "Then regenerate the IR.\n"
-       "2. Run clj -M:crap.\n"
-       "3. Run clj -M:mutate on each changed file under src/ (differential).\n"
+       "2. For Clojure, run clj -M:crap.\n"
+       "3. For Clojure, run clj -M:mutate on each changed file under src/ (differential).\n"
        "   Uncovered mutants are coverage gaps: keep the snapshot; do not\n"
        "   re-run the file or pass --mutate-all because of them.\n"
        "4. Regenerate the IR so the EDN mtime updates.\n"
        "Mailbox: .uml-viewer/to-agent.edn and to-viewer.edn are queues\n"
-       "{:next-id n :queue [cmd …]} (atomic: tmp then rename). Pop the head of\n"
+       "{:next-id n :queue [cmd ...]} (atomic: tmp then rename). Pop the head of\n"
        ":queue as you handle it (rewrite the file). Oldest first. Ops are\n"
        "{:id n :op :display :path \"...\"}, {:id n :op :regen},\n"
        "{:id n :op :quit-for-restart}, {:id n :op :context ...},\n"
@@ -92,29 +103,14 @@
        "changes. To restart it: write :quit-for-restart, wait for the JVM to\n"
        "exit, then ./uml --restart. Do not pass --restart except through that\n"
        "wrapper (or :uml-viewer-restart). Do not SIGKILL. Closing the viewer\n"
-       "kills only this companion's tmux session, not other Grok agents. If\n"
-       "this Grok process dies, tmux respawns it in the same pane.\n"
+       "kills only this companion's tmux session, not other agents. If\n"
+       "this agent process dies, tmux respawns it in the same pane.\n"
        "Do not commit or push unless asked.\n"))
 
 (def launch-prompt
   (str "On launch: from this working directory, update the hierarchical policy "
        "to match the project's namespaces (no invented layers/components), regenerate the "
        "IR, then wait for directives."))
-
-(defn grok-executable
-  []
-  (let [home (System/getenv "HOME")
-        named (System/getenv "GROK_BIN")
-        candidates (filter identity
-                           [named
-                            (when home (str home "/.grok/bin/grok"))
-                            "/usr/local/bin/grok"
-                            "/opt/homebrew/bin/grok"])]
-    (or (first (filter (fn [p]
-                         (let [f (io/file p)]
-                           (and (.isFile f) (.canExecute f))))
-                       candidates))
-        "grok")))
 
 (defonce !session-name (atom nil))
 
@@ -172,14 +168,13 @@
     (str "{" r ", " g ", " b "}")))
 
 (defn new-session-args
+  "tmux arguments that start the companion agent (see `agent/config`)."
   ([cwd] (new-session-args cwd (session-id cwd)))
-  ([cwd session]
-   ["new-session" "-d" "-s" session "-c" cwd
-    "-e" "GROK_THEME=terminal"
-    "-e" "GROK_TERMINAL_THEME=1"
-    "-e" "COLORTERM=truecolor"
-    (grok-executable) "--yolo" "--trust" "--rules" standing-rules
-    launch-prompt]))
+  ([cwd session] (new-session-args cwd session (agent/config)))
+  ([cwd session cfg]
+   (into ["new-session" "-d" "-s" session "-c" cwd]
+         (concat (agent/session-env cfg standing-rules launch-prompt)
+                 (agent/launch-args cfg standing-rules launch-prompt)))))
 
 (defn kill-session-args
   ([] (kill-session-args (current-session)))
@@ -190,17 +185,16 @@
   "You have mail from the viewer. If idle, read .uml-viewer/to-agent.edn.")
 
 (defn notify-steps
-  "SwarmForge-style wake-up: literal text, pause, CR, pause, LF."
+  "Wake-up: literal text, a pause, then the agent's submit keys
+  (Enter; Grok also wants LF, SwarmForge-style)."
   ([] (notify-steps (current-session)))
-  ([session]
-   [["send-keys" "-t" session "-l" wake-message]
-    [:sleep 150]
-    ["send-keys" "-t" session "C-m"]
-    [:sleep 50]
-    ["send-keys" "-t" session "C-j"]]))
+  ([session] (notify-steps session (agent/config)))
+  ([session cfg]
+   (into [["send-keys" "-t" session "-l" wake-message]]
+         (agent/submit-steps cfg session))))
 
 (defn notify-agent!
-  "Wake the companion Grok session. Returns false if tmux/session is missing."
+  "Wake the companion agent session. Returns false if tmux/session is missing."
   ([] (notify-agent! (System/getProperty "user.dir")))
   ([root]
    (if-let [session (live-session root)]
@@ -214,13 +208,13 @@
      false)))
 
 (defn request-agent!
-  "Queue `op` for the companion and wake Grok. Returns {:cmd :woke?}."
+  "Queue `op` for the companion and wake the agent. Returns {:cmd :woke?}."
   [root op extra]
   (let [cmd (mailbox/write-command! (mailbox/to-agent root) op extra)]
     {:cmd cmd :woke? (notify-agent! root)}))
 
 (defn request-regen!
-  "Queue a :regen command and wake Grok. Returns {:cmd :woke?}."
+  "Queue a :regen command and wake the agent. Returns {:cmd :woke?}."
   [root]
   (request-agent! root :regen {}))
 
@@ -240,7 +234,7 @@
 (defn terminal-title
   ([] (terminal-title (current-session)))
   ([session]
-   (or session "UML Grok")))
+   (or session "UML companion")))
 
 (defonce !terminal-window-id (atom nil))
 
@@ -306,7 +300,7 @@
     (catch Exception _ "")))
 
 (defn close-terminal-window!
-  "Close the Terminal window that attached to the grok session."
+  "Close the Terminal window that attached to the companion session."
   []
   (run-osascript (close-terminal-script @!terminal-window-id))
   (reset! !terminal-window-id nil))
@@ -319,7 +313,7 @@
     (apply tmux! (kill-session-args session))))
 
 (defn- arm-respawn!
-  "If Grok dies, tmux restarts that pane only — not other agents."
+  "If the agent dies, tmux restarts that pane only — not other agents."
   [session]
   (let [pane (str session ":0.0")]
     (tmux! "set-option" "-p" "-t" pane "remain-on-exit" "on")
@@ -327,7 +321,7 @@
     (tmux! "set-option" "-t" session "status" "off")))
 
 (defn open-in-terminal!
-  "Start this project's companion Grok in its own tmux session."
+  "Start this project's companion agent in its own tmux session."
   ([] (open-in-terminal! (System/getProperty "user.dir")))
   ([cwd]
    (let [session (session-id cwd)
@@ -752,7 +746,7 @@
         {:keys [woke?]} (request-regen! root)]
     (assoc state :mail-status (if woke?
                                 "Regen requested."
-                                "Regen queued; Grok session not attached."))))
+                                "Regen queued; companion agent not attached."))))
 
 (defn- proposal-menu-click? [event hit]
   (and (right-click? event) (= :proposal (:kind hit))))

@@ -93,6 +93,7 @@
   {:from :domain.hierarchy, :to :domain.config, :kind :dependency}
   {:from :application.ir-generator, :to :domain.policy, :kind :dependency}
   {:from :application.events, :to :application.document, :kind :dependency}
+  {:from :adapters.sketch, :to :adapters.agent, :kind :dependency}
   {:from :adapters.draw, :to :engine.hit, :kind :dependency}
   {:from :clojure-language.graph-clojure, :to :graph, :kind :implements}
   {:from :adapters.draw, :to :domain.geom, :kind :dependency}
@@ -147,6 +148,13 @@
   {:from :adapters.sketch, :to :javax.swing, :kind :dependency}],
  :classes
  [{:stereotype nil,
+   :ns "uml-viewer.adapters.agent",
+   :name "Agent",
+   :file "src/uml_viewer/adapters/agent.clj",
+   :level 3,
+   :lang :clojure,
+   :id :adapters.agent}
+  {:stereotype nil,
    :ns "uml-viewer.adapters.core",
    :name "Core",
    :file "src/uml_viewer/adapters/core.clj",
