@@ -71,11 +71,10 @@
 
 (defn read-facts
   "Run `scan.php` over `files`. Returns `{:files [...]}` with keyword keys."
-  [files root opts]
+  [files opts]
   (if (empty? files)
     {:files []}
-    (let [cmd [(php-binary opts) (scanner-path opts)
-               (.getCanonicalPath (io/file root))]
+    (let [cmd [(php-binary opts) (scanner-path opts)]
           p (start-scanner cmd)
           err (daemon #(slurp (.getErrorStream p)))]
       (daemon #(with-open [w (io/writer (.getOutputStream p))]
@@ -228,7 +227,7 @@
 (defrecord PhpGraph []
   graph/LanguageGraph
   (scan [_ root opts]
-    (let [files (:files (read-facts (source-files root) root opts))]
+    (let [files (:files (read-facts (source-files root) opts))]
       (warn-errors! files)
       (facts->graph files opts))))
 

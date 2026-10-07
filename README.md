@@ -57,11 +57,10 @@ clj -M:run examples/uml-viewer.edn
 clj -M:run --help
 ```
 
-The PHP scanner also needs PHP 8.1+ and Composer (once, for
-`nikic/php-parser`):
+The PHP scanner also needs PHP 8.1+. Its parser is checked in, so there is
+nothing to install:
 
 ```bash
-composer install --working-dir=php
 clj -M:ir examples/php-shop.policy.edn   # → examples/php-shop.edn
 clj -M:run examples/php-shop.edn
 ```
@@ -590,12 +589,15 @@ private methods are `:private`, so the box shows only public methods.
 A file that does not parse is reported on stderr, and whatever the
 parser recovered is kept.
 
-`scan.php` loads nikic/php-parser ^5 from `UML_VIEWER_PHP_AUTOLOAD`,
-then `php/vendor` (`composer install --working-dir=php`), then the
-`vendor/` of the scanned project or one of its parents. `UML_VIEWER_PHP`
-names the PHP binary (default `php`), and `UML_VIEWER_PHP_SCANNER` names
-another `scan.php`. `get-uml-viewer` runs the Composer install when the
-project has a `composer.json`.
+nikic/php-parser is checked in under `php/vendor` (its `lib/`, license,
+and `composer.json` only), so a clone scans PHP with no Composer and no
+network. `php/composer.lock` pins the version. To update it, run
+`composer update --working-dir=php` and commit `php/vendor`: the
+`prune-vendor.php` script that Composer runs afterwards strips tests and
+docs, so the tree stays small. The scanned project's own `vendor/` is never
+loaded. `UML_VIEWER_PHP_AUTOLOAD` names another autoloader,
+`UML_VIEWER_PHP` names the PHP binary (default `php`), and
+`UML_VIEWER_PHP_SCANNER` names another `scan.php`.
 
 ```edn
 {:title "PHP shop"

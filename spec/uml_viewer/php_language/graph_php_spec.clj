@@ -28,7 +28,7 @@
 (defn- when-php [f]
   (if @php-ready?
     (f)
-    (println "php or nikic/php-parser missing (composer install --working-dir=php); PHP scan skipped")))
+    (println "php not found; PHP scan skipped")))
 
 (defn- by-id [g]
   (into {} (map (juxt :id identity) (:classes g))))
@@ -240,7 +240,6 @@
       (spit-file dir "src/A.php" "<?php class A {}\n")
       (should-throw clojure.lang.ExceptionInfo
                     (php/read-facts (php/source-files (io/file dir "src"))
-                                    (io/file dir "src")
                                     {:php (str (io/file dir "no-such-php"))}))))
 
   (it "skips php when there are no files"

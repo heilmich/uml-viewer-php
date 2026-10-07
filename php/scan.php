@@ -16,11 +16,10 @@ declare(strict_types=1);
  * through `new`, static access, type hints, attributes, `instanceof`, and
  * `catch`. Names are fully qualified without the leading backslash.
  *
- * Usage: php scan.php [project-root] < files.txt
+ * Usage: php scan.php < files.txt
  *
- * nikic/php-parser is loaded from UML_VIEWER_PHP_AUTOLOAD, then from
- * vendor/ next to this script (`composer install --working-dir=<this dir>`),
- * then from the vendor/ of the scanned project or one of its parents.
+ * nikic/php-parser ships in vendor/ next to this script, so nothing needs
+ * installing. UML_VIEWER_PHP_AUTOLOAD names another autoloader instead.
  */
 
 use PhpParser\NodeTraverser;
@@ -28,40 +27,19 @@ use PhpParser\NodeVisitor\NameResolver;
 use PhpParser\ParserFactory;
 use PhpParser\ErrorHandler\Collecting;
 
-function uml_autoload_candidates(?string $projectRoot): array
+function uml_load_parser(): void
 {
-    $candidates = [];
     $env = getenv('UML_VIEWER_PHP_AUTOLOAD');
-    if (is_string($env) && $env !== '') {
-        $candidates[] = $env;
+    $autoload = is_string($env) && $env !== '' ? $env : __DIR__ . '/vendor/autoload.php';
+    if (is_file($autoload)) {
+        require_once $autoload;
     }
-    $candidates[] = __DIR__ . '/vendor/autoload.php';
-    $dir = $projectRoot !== null ? realpath($projectRoot) : false;
-    while (is_string($dir) && $dir !== '') {
-        $candidates[] = $dir . '/vendor/autoload.php';
-        $parent = dirname($dir);
-        if ($parent === $dir) {
-            break;
-        }
-        $dir = $parent;
+    if (!class_exists(ParserFactory::class)
+        || !method_exists(ParserFactory::class, 'createForNewestSupportedVersion')) {
+        fwrite(STDERR, "uml-viewer: nikic/php-parser ^5 not found at " . $autoload
+            . ". Restore php/vendor from git, or run: composer install --working-dir=" . __DIR__ . PHP_EOL);
+        exit(2);
     }
-    return $candidates;
-}
-
-function uml_load_parser(?string $projectRoot): void
-{
-    foreach (uml_autoload_candidates($projectRoot) as $autoload) {
-        if (is_file($autoload)) {
-            require_once $autoload;
-            if (class_exists(ParserFactory::class)
-                && method_exists(ParserFactory::class, 'createForNewestSupportedVersion')) {
-                return;
-            }
-        }
-    }
-    fwrite(STDERR, "uml-viewer: nikic/php-parser ^5 not found. Run: composer install --working-dir="
-        . __DIR__ . PHP_EOL);
-    exit(2);
 }
 
 /** @return array<string, mixed> */
@@ -95,10 +73,9 @@ function uml_scan_file($parser, string $file): array
     return $result;
 }
 
-function uml_main(array $argv): int
+function uml_main(): int
 {
-    $root = $argv[1] ?? null;
-    uml_load_parser($root);
+    uml_load_parser();
     require_once __DIR__ . '/collector.php';
     $parser = (new ParserFactory())->createForNewestSupportedVersion();
     $files = [];
@@ -116,4 +93,4 @@ function uml_main(array $argv): int
     return 0;
 }
 
-exit(uml_main($argv));
+exit(uml_main());
