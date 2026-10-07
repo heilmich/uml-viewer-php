@@ -19,6 +19,8 @@
                  (spit (pr-str {:lang :python})))
           plain (doto (java.io.File/createTempFile "uv-plan" ".edn")
                   (spit (pr-str {:title "T"})))
+          php (doto (java.io.File/createTempFile "uv-plan" ".edn")
+                (spit (pr-str {:lang :php})))
           missing (doto (java.io.File/createTempFile "uv-plan" ".edn")
                     (spit (pr-str {:lang :not-a-language})))]
       (try
@@ -30,9 +32,11 @@
           (should= "out.edn" (:out chosen))
           (should (satisfies? graph/LanguageGraph (:impl chosen)))
           (should (satisfies? graph/LanguageGraph (:impl (plan [(.getPath plain)]))))
+          (should= (graph/lookup :php) (:impl (plan [(.getPath php)])))
           (should-throw
             (plan [(.getPath missing)])))
         (finally
           (io/delete-file path true)
           (io/delete-file plain true)
+          (io/delete-file php true)
           (io/delete-file missing true))))))

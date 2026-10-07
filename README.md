@@ -57,6 +57,15 @@ clj -M:run examples/uml-viewer.edn
 clj -M:run --help
 ```
 
+The PHP scanner also needs PHP 8.1+ and Composer (once, for
+`nikic/php-parser`):
+
+```bash
+composer install --working-dir=php
+clj -M:ir examples/php-shop.policy.edn   # → examples/php-shop.edn
+clj -M:run examples/php-shop.edn
+```
+
 From **any Clojure project** you want to view (no local uml-viewer checkout
 needed):
 
@@ -193,8 +202,9 @@ namespace is a `:dependency`. `requiring-resolve` of a quoted var is a
 classes. The overlay fills Clojure members from `.metrics/`. TypeScript,
 Rust, and Python are separate scanners (see
 [Language graphs](#language-graphs)): one class per module, with exported
-members as `:ops`. The overlay joins each snapshot by `:ns`, then by
-the class id.
+members as `:ops`. PHP is a separate scanner too, with one class per
+class, interface, trait, or enum, and the PHP namespace as the tree.
+The overlay joins each snapshot by `:ns`, then by the class id.
 
 ### Do not invent layers (components)
 
@@ -515,12 +525,68 @@ project name. `list[Animal]` is not. Public module-level functions and
 classes are `:ops`. A module whose public classes are only `Protocol` or
 `ABC` bases, with no public functions, is `:stereotype :interface`.
 
+**PHP** (`uml-viewer.php-language.graph-php`) emits one class per
+class, interface, trait, and enum, not per file. `php/scan.php` parses
+every `.php` file with [nikic/php-parser](https://github.com/nikic/PHP-Parser)
+and resolves names (`use`, group `use`, aliases, and the current
+namespace) before the graph is built. The namespace is the tree:
+`App\Domain\Model\User` is `App.Domain.Model.User`, and with policy
+`:prefix "App"` its id is `:Domain.Model.User`. A source `:prefix` that
+the namespace does not already start with is prepended, as in Python.
+It skips `*Test.php` and paths under `vendor`, `node_modules`, `tests`,
+`Tests`, `test`, `var`, `cache`, `build`, `dist`, and dot directories.
+
+| PHP | IR |
+|-----|----|
+| `interface` / `trait` / `enum` / `abstract class` | `:stereotype :interface` / `:trait` / `:enumeration` / `:abstract` |
+| `extends` (class or interface) | `:inheritance` |
+| `implements` (class or enum) | `:implements` |
+| `use SomeTrait;` in a class body | `:inheritance` with `:label "use"` |
+| `new`, `X::call()`, `X::CONST`, `X::$prop`, `X::class`, type hints (properties, parameters, returns, closures, typed constants), `#[Attribute]`, `instanceof`, `catch` | `:dependency` |
+
+`self`, `static`, `parent`, and builtin types are not edges. Class
+names match without case, as PHP does. A name that is not declared in
+the scanned tree is foreign, keyed by its dotted name
+(`Psr\Log\LoggerInterface` is `:Psr.Log.LoggerInterface`, collapsed by a
+`:foreign` entry such as `Psr`; a global class such as `PDO` is `:PDO`).
+An anonymous class adds its `extends`, `implements`, traits, and member
+types to the class that contains it. Typed properties (promoted
+constructor parameters included) and enum cases are `:fields`
+(`- email : Email {readOnly}`, with `+`, `#`, `-` visibility). Methods are
+`:ops` (`rename(name: string, ...tags: Tag) : static`). Protected and
+private methods are `:private`, so the box shows only public methods.
+A file that does not parse is reported on stderr, and whatever the
+parser recovered is kept.
+
+`scan.php` loads nikic/php-parser ^5 from `UML_VIEWER_PHP_AUTOLOAD`,
+then `php/vendor` (`composer install --working-dir=php`), then the
+`vendor/` of the scanned project or one of its parents. `UML_VIEWER_PHP`
+names the PHP binary (default `php`), and `UML_VIEWER_PHP_SCANNER` names
+another `scan.php`. `get-uml-viewer` runs the Composer install when the
+project has a `composer.json`.
+
+```edn
+{:title "PHP shop"
+ :src "examples/php-shop/src"
+ :prefix "Shop"
+ :lang :php
+ :out "examples/php-shop.edn"
+ :hierarchical true
+ :foreign [Psr DateTimeImmutable DomainException RuntimeException PDO PDOException]
+ :order [Http Application Infrastructure Domain]
+ :levels [[Domain] [Application] [Infrastructure Http]]}
+```
+
+`examples/php-shop` is a small layered sample. `Order` calls
+`SystemClock::now()` on purpose, so the Domain → Infrastructure arrow is
+red.
+
 `merge-scans` links a TypeScript `invoke("read_text")` to the Rust class
 that owns `#[tauri::command] fn read_text`, as a `:dependency`. Two
 project classes with the same id are an error. When a dependency and an
 `:implements` edge join the same pair, the IR keeps `:implements`.
 
-CRAP and mutation for TypeScript, Rust, and Python come from separate
+CRAP and mutation for TypeScript, Rust, Python, and PHP come from separate
 tools. The overlay joins a snapshot to the class whose `:ns` equals that
 namespace. Otherwise the class id owns that name (`bookwriter.model`
 owns `model`), a dotted child rolls up (`pdf` owns `pdf.Layout`), and
@@ -648,9 +714,11 @@ extractor must satisfy `LanguageSource`:
 `:file`.
 
 **TypeScript** (`uml-viewer.typescript-language.source-typescript`),
-**Rust** (`uml-viewer.rust-language.source-rust`), and **Python**
-(`uml-viewer.python-language.source-python`) open `:file` and find the
-exported declaration, the `fn`, or the `def`. The class card passes
+**Rust** (`uml-viewer.rust-language.source-rust`), **Python**
+(`uml-viewer.python-language.source-python`), and **PHP**
+(`uml-viewer.php-language.source-php`) open `:file` and find the
+exported declaration, the `fn`, the `def`, or the `function`
+(PHP also finds a class, interface, trait, enum, or enum `case`). The class card passes
 `:lang` and `:file` from the class. A class with no `:lang` still uses
 the Clojure extractor that Main passes in. The protocol is the seam; do
 not special-case languages in the class card.

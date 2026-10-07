@@ -126,8 +126,21 @@ EOF
   chmod +x ./uml
 }
 
+# A PHP project (composer.json) needs nikic/php-parser for the PHP scanner.
+install_php_scanner() {
+  [[ -f composer.json && -f "$tool_dir/php/composer.json" ]] || return 0
+  if ! command -v composer >/dev/null; then
+    echo "get-uml-viewer: composer not found; run" \
+      "composer install --working-dir=$tool_dir/php before scanning PHP" >&2
+    return 0
+  fi
+  composer install --no-interaction --no-progress --working-dir="$tool_dir/php" >&2 ||
+    echo "get-uml-viewer: composer install failed; the PHP scanner needs nikic/php-parser" >&2
+}
+
 ensure_gitignore
 fetch_tool
+install_php_scanner
 write_uml
 
 echo "Installed ./uml (uml-viewer in $tool_dir)."

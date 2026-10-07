@@ -6,10 +6,12 @@
  {[:main.uml-viewer :adapters.core] :association,
   [:main.ir-generator :typescript-language.graph-typescript] :association,
   [:application.document :domain.hierarchy] :association,
+  [:main.ir-generator :php-language.graph-php] :association,
   [:main.ir-generator :clojure-language.graph-clojure] :association,
   [:main.uml-viewer :rust-language.source-rust] :association,
   [:application.document :engine.compose] :association,
   [:main.uml-viewer :typescript-language.source-typescript] :association,
+  [:main.uml-viewer :php-language.source-php] :association,
   [:main :python-language] :association,
   [:engine.compose :engine.layout] :association,
   [:engine.compose :engine.route] :association,
@@ -19,6 +21,7 @@
   [:main.uml-viewer :clojure-language.source-clojure] :association,
   [:main :clojure-language] :association,
   [:main.ir-generator :application.ir-generator] :association,
+  [:main :php-language] :association,
   [:main.uml-viewer :python-language.source-python] :association,
   [:main :adapters] :association,
   [:main :rust-language] :association,
@@ -32,7 +35,8 @@
    :clojure-language
    :typescript-language
    :rust-language
-   :python-language]
+   :python-language
+   :php-language]
   [:engine]
   [:application]
   [:adapters]
@@ -49,6 +53,7 @@
   :typescript-language
   :rust-language
   :python-language
+  :php-language
   :domain],
  :omit [],
  :edges
@@ -63,6 +68,7 @@
   {:from :rust-language.source-rust, :to :source, :kind :dependency}
   {:from :application.document, :to :domain.hierarchy, :kind :dependency}
   {:from :application.events, :to :domain.policy, :kind :dependency}
+  {:from :main.ir-generator, :to :php-language.graph-php, :kind :dependency}
   {:from :adapters.sketch, :to :adapters.draw, :kind :dependency}
   {:from :application.document, :to :domain.log, :kind :dependency}
   {:from :application.document, :to :engine.hit, :kind :dependency}
@@ -79,6 +85,7 @@
   {:from :application.document, :to :domain.ir, :kind :dependency}
   {:from :adapters.draw, :to :application.detail, :kind :dependency}
   {:from :adapters.draw, :to :quil, :kind :dependency}
+  {:from :main.uml-viewer, :to :php-language.source-php, :kind :dependency}
   {:from :main.uml-viewer, :to :domain.log, :kind :dependency}
   {:from :adapters.draw, :to :engine.curve, :kind :dependency}
   {:from :application.events, :to :application.detail, :kind :dependency}
@@ -98,6 +105,7 @@
   {:from :engine.compose, :to :domain.geom, :kind :dependency}
   {:from :main.ir-generator, :to :rust-language.graph-rust, :kind :dependency}
   {:from :engine.route, :to :engine.layout, :kind :dependency}
+  {:from :php-language.source-php, :to :source, :kind :dependency}
   {:from :domain.hierarchy, :to :domain.policy, :kind :dependency}
   {:from :adapters.draw, :to :domain.hierarchy, :kind :dependency}
   {:from :adapters.sketch, :to :engine.layout, :kind :dependency}
@@ -135,6 +143,7 @@
   {:from :application.document, :to :domain.mailbox, :kind :dependency}
   {:from :engine.route, :to :domain.geom, :kind :dependency}
   {:from :adapters.source-window, :to :javax.swing, :kind :dependency}
+  {:from :php-language.graph-php, :to :graph, :kind :implements}
   {:from :adapters.sketch, :to :javax.swing, :kind :dependency}],
  :classes
  [{:stereotype nil,
@@ -319,6 +328,20 @@
    :level 4,
    :lang :clojure,
    :id :main.uml-viewer}
+  {:stereotype nil,
+   :ns "uml-viewer.php-language.graph-php",
+   :name "GraphPhp",
+   :file "src/uml_viewer/php_language/graph_php.clj",
+   :level 0,
+   :lang :clojure,
+   :id :php-language.graph-php}
+  {:stereotype nil,
+   :ns "uml-viewer.php-language.source-php",
+   :name "SourcePhp",
+   :file "src/uml_viewer/php_language/source_php.clj",
+   :level 0,
+   :lang :clojure,
+   :id :php-language.source-php}
   {:stereotype nil,
    :ns "uml-viewer.python-language.graph-python",
    :name "GraphPython",
