@@ -1,0 +1,345 @@
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  color: #172b3a;
+  background: #f5f7fa;
+  font-synthesis: none;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+select,
+input,
+textarea {
+  font: inherit;
+}
+button,
+select {
+  border: 1px solid #cbd5e1;
+  background: white;
+  border-radius: 6px;
+  padding: 7px 10px;
+  color: #24394a;
+  cursor: pointer;
+}
+button:hover {
+  background: #e7f4f1;
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+input {
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 7px;
+  max-width: 100%;
+}
+label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+.appbar {
+  height: 74px;
+  background: #122a37;
+  color: white;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.appbar small {
+  display: block;
+  color: #9db3bf;
+  font-size: 12px;
+  margin-top: 5px;
+}
+.logo {
+  font-size: 27px;
+  font-weight: 900;
+  letter-spacing: -2px;
+  color: #5eead4;
+}
+.logo span {
+  color: #fff;
+}
+.local {
+  margin-left: auto;
+  font-size: 11px;
+  letter-spacing: 1px;
+  background: #24434e;
+  border-radius: 5px;
+  padding: 7px;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 14px 20px;
+  background: white;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #e2e8f0;
+}
+.toolbar > div:first-child {
+  margin-right: auto;
+  display: flex;
+  gap: 12px;
+}
+.muted {
+  color: #64748b;
+  font-size: 13px;
+}
+.viewer {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 74px);
+  min-height: 620px;
+}
+.viewer nav {
+  padding: 8px 20px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 12px;
+}
+.viewer nav button {
+  border: 0;
+  background: none;
+  padding: 5px;
+  color: #0f766e;
+}
+.workbench {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.canvas {
+  flex: 1;
+  min-width: 0;
+  background: #f4f7fa;
+}
+aside {
+  width: 320px;
+  background: white;
+  padding: 22px;
+  border-left: 1px solid #e2e8f0;
+  overflow: auto;
+}
+aside h2 {
+  font-size: 19px;
+  margin: 0 0 15px;
+}
+h3 {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #64748b;
+  letter-spacing: 0.8px;
+  margin-top: 24px;
+}
+.box {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  gap: 9px;
+  padding: 5px;
+}
+.box small {
+  font-size: 9px;
+  color: #64748b;
+  letter-spacing: 1px;
+}
+.box strong {
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.box span {
+  font-size: 10px;
+  color: #64748b;
+}
+.react-flow__node {
+  box-shadow: 0 3px 12px #102f4310;
+  border-radius: 8px !important;
+  background: white !important;
+}
+.react-flow__edge-text {
+  font-size: 10px;
+}
+.member {
+  font:
+    11px ui-monospace,
+    monospace;
+  border-bottom: 1px solid #f1f5f9;
+  padding: 8px 0;
+  overflow-wrap: anywhere;
+}
+.pill {
+  font-size: 11px;
+  background: #eef6f4;
+  color: #0f766e;
+  padding: 5px 8px;
+  border-radius: 5px;
+}
+.mono {
+  font:
+    11px ui-monospace,
+    monospace;
+  overflow-wrap: anywhere;
+}
+.share {
+  margin-top: 32px;
+  border-top: 1px solid #e2e8f0;
+}
+.share button {
+  margin-top: 8px;
+}
+.share small {
+  display: block;
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 10px;
+}
+footer {
+  font-size: 11px;
+  padding: 9px 20px;
+  background: white;
+  border-top: 1px solid #e2e8f0;
+  color: #64748b;
+}
+footer span {
+  float: right;
+}
+.banner,
+.proposal-notice {
+  padding: 10px 20px;
+  font-size: 13px;
+  background: #dcfce7;
+}
+.banner button {
+  margin-left: 15px;
+}
+.warning,
+.proposal-notice {
+  background: #fef3c7;
+  color: #92400e;
+}
+.diagnostics {
+  padding: 8px 20px;
+  font-size: 12px;
+  background: #fff1f2;
+}
+.diagnostics p {
+  max-width: 90vw;
+  overflow-wrap: anywhere;
+}
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: #10273890;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.source-dialog,
+.editor-dialog {
+  background: white;
+  border-radius: 10px;
+  padding: 22px;
+  max-height: 88vh;
+  overflow: auto;
+  width: min(1100px, 92vw);
+}
+.source-dialog header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.source-dialog pre {
+  font:
+    12px/1.7 ui-monospace,
+    monospace;
+  white-space: pre;
+  overflow: auto;
+}
+.lineno {
+  display: inline-block;
+  width: 45px;
+  color: #94a3b8;
+  user-select: none;
+}
+.highlight {
+  background: #fef3c7;
+}
+.editor-dialog {
+  width: min(850px, 92vw);
+}
+.editor-dialog textarea {
+  width: 100%;
+  height: 45vh;
+  font:
+    13px/1.5 ui-monospace,
+    monospace;
+  padding: 14px;
+}
+.editor-dialog button {
+  margin: 12px 8px 0 0;
+}
+.editor-dialog p {
+  font-size: 13px;
+  color: #64748b;
+}
+.relation {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 12px 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.relation small {
+  font-size: 10px;
+  color: #64748b;
+}
+.loading,
+.empty {
+  padding: 50px;
+}
+.empty {
+  text-align: center;
+}
+@media (max-width: 900px) {
+  aside {
+    width: 250px;
+  }
+  .toolbar {
+    gap: 5px;
+    padding: 10px;
+  }
+  .toolbar button {
+    font-size: 11px;
+  }
+  .local {
+    display: none;
+  }
+}
+button.member {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #f1f5f9;
+  text-align: left;
+  border-radius: 0;
+  background: white;
+}
+.edge-label {
+  position: absolute;
+  pointer-events: all;
+  background: #ffffffed;
+  border: 1px solid #e2e8f0;
+  padding: 3px 5px;
+  font-size: 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+}

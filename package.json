@@ -1,0 +1,67 @@
+{
+  "name": "@heilmich/uml-viewer",
+  "version": "0.1.0",
+  "description": "Local architecture viewer and static PHP analysis, powered by Node.js",
+  "type": "module",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "bin": {
+    "uml-viewer": "dist/node/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/node/index.d.ts",
+      "import": "./dist/node/index.js"
+    },
+    "./viewer": {
+      "types": "./dist/viewer/index.d.ts",
+      "import": "./dist/viewer/index.js"
+    },
+    "./viewer.css": "./dist/viewer/index.css",
+    "./core": {
+      "types": "./dist/node/core/index.d.ts",
+      "import": "./dist/node/core/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "docs",
+    "skills",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && vite build && node scripts/build-viewer.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "test:browser": "playwright test",
+    "dev": "vite --host 127.0.0.1",
+    "prepack": "npm run build",
+    "format": "prettier --write node viewer tests"
+  },
+  "dependencies": {
+    "@dagrejs/dagre": "^1.1.8",
+    "@lezer/python": "1.1.19",
+    "@lezer/rust": "1.0.3",
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "@nextjournal/lezer-clojure": "1.0.0",
+    "@xyflow/react": "^12.10.0",
+    "php-parser": "3.7.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "typescript": "5.9.3",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@types/dagre": "^0.7.54",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "esbuild": "^0.25.12",
+    "prettier": "3.6.2",
+    "tsx": "^4.20.6",
+    "vite": "^7.2.0"
+  }
+}

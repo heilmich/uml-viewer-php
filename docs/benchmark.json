@@ -1,0 +1,17 @@
+{
+  "project": "/tmp/uml-benchmark-console",
+  "commit": "a28c3e5b4df406e8fae8e9b18c40557b5dfc430c",
+  "files": 126,
+  "declarations": 126,
+  "externalNodes": 70,
+  "relations": 622,
+  "complete": true,
+  "analysisMs": 327.39,
+  "browserNavigationToPaintMs": 656,
+  "renderedNodes": 26,
+  "renderedEdges": 79,
+  "node": "v24.19.0",
+  "chromium": "154.0.8037.57",
+  "viewport": "1440x1000",
+  "note": "Single cold browser navigation, including HTTP and JavaScript bootstrap; not an isolated React render benchmark."
+}
