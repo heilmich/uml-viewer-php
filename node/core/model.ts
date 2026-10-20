@@ -9,11 +9,12 @@ export const relationKinds = [
 ] as const;
 export const memberSchema = z
   .object({
-    name: z.string(),
+    name: z.string().optional(),
     text: z.string().optional(),
     line: z.number().optional(),
   })
-  .passthrough();
+  .passthrough()
+  .refine((m) => !!m.name || !!m.text, 'A member needs name or text');
 export const nodeSchema = z
   .object({
     id: z.string(),
@@ -121,6 +122,10 @@ export const proposalSchema = z.object({
     }),
   ),
   omit: z.array(z.string()).default([]),
+  scope: z
+    .object({ nodeIds: z.array(z.string()), edgeIds: z.array(z.string()) })
+    .nullable()
+    .optional(),
 });
 export type Proposal = z.infer<typeof proposalSchema>;
 export interface ViewState {

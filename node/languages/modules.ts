@@ -120,8 +120,19 @@ export const pythonAdapter: LanguageAdapter = {
           .filter(Boolean)
           .join('.');
       };
-      for (const n of children(tree.topNode)) {
-        const text = f.code.slice(n.from, n.to);
+      // Imports are dependencies even inside function/class bodies. Definitions
+      // remain module-level operations, matching the historical scanner.
+      const imports: SyntaxNode[] = [];
+      const cursor = tree.cursor();
+      do {
+        if (cursor.name === 'ImportStatement') imports.push(cursor.node);
+      } while (cursor.next());
+      const top = children(tree.topNode);
+      for (const n of [
+        ...imports,
+        ...top.filter((n) => n.name !== 'ImportStatement'),
+      ]) {
+        const text = f.code.slice(n.from, n.to).replace(/\\\r?\n/g, ' ');
         if (n.name === 'ImportStatement') {
           const fromMatch = text.match(/^from\s+([\w.]+)\s+import\s+([\s\S]+)/);
           if (fromMatch) {
@@ -142,7 +153,7 @@ export const pythonAdapter: LanguageAdapter = {
                 line(f.code, n.from),
               );
             }
-          } else
+          } else if (/^import\s+/.test(text))
             for (const part of text.replace(/^import\s+/, '').split(',')) {
               const m = part.trim().match(/^([\w.]+)(?:\s+as\s+(\w+))?/);
               if (m) {

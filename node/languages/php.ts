@@ -185,8 +185,8 @@ export function parsePhp(file: string, code: string): FileFacts {
             for (const p of s.properties ?? [])
               d.properties.push({
                 name: nameOf(p.name),
-                type: display(p.type, p.nullable),
-                types: types(p.type),
+                type: display(s.properties[0]?.type, s.properties[0]?.nullable),
+                types: types(s.properties[0]?.type),
                 visibility: s.visibility || 'public',
                 static: !!s.isStatic,
                 readonly: !!p.readonly || d.readonly,

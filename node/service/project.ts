@@ -231,9 +231,7 @@ export class Project {
       createdAt = new Date().toISOString();
     const snapshot = snapshotSchema.parse({
       schemaVersion: 1,
-      id: hash(
-        '0.1.0' + this.id + fingerprint + JSON.stringify(policy) + language,
-      ).slice(0, 24),
+      id: randomUUID(),
       project: { id: this.id, root: this.root, name: this.name },
       metadata: {
         analyzerVersion: '0.1.0',
@@ -286,7 +284,10 @@ export class Project {
         if (!config.policyProposalsImported) {
           const proposals = migrateProposals(policy);
           if (proposals.length && !(await this.proposals()).length)
-            await this.atomic('proposals.json', proposals);
+            await this.atomic(
+              'proposals.json',
+              await this.rememberImportedProposals(proposals),
+            );
         }
         await this.atomic('config.json', {
           ...config,
@@ -341,18 +342,58 @@ export class Project {
       throw e;
     }
   }
+  private async proposalVersions(): Promise<Map<string, number>> {
+    try {
+      const input = JSON.parse(
+        await readFile(
+          await confined(this.root, '.uml-viewer/proposal-versions.json'),
+          'utf8',
+        ),
+      );
+      if (!input || typeof input !== 'object' || Array.isArray(input))
+        throw Error('Invalid proposal revision registry');
+      const entries = Object.entries(input);
+      if (
+        entries.some(
+          ([, v]) => typeof v !== 'number' || !Number.isSafeInteger(v) || v < 0,
+        )
+      )
+        throw Error('Invalid proposal revision registry');
+      return new Map(entries as [string, number][]);
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === 'ENOENT') return new Map();
+      throw e;
+    }
+  }
+  private async rememberImportedProposals(proposals: Proposal[]) {
+    const versions = await this.proposalVersions();
+    const imported = proposals.map((p) => ({
+      ...p,
+      version: Math.max(p.version, (versions.get(p.id) ?? 0) + 1),
+    }));
+    for (const p of imported) versions.set(p.id, p.version);
+    await this.atomic('proposal-versions.json', Object.fromEntries(versions));
+    return imported;
+  }
   async updateProposal(id: string, expectedVersion: number, input: unknown) {
     return this.locked(async () => {
       const all = await this.proposals(),
         current = all.find((p) => p.id === id);
       if ((current?.version ?? 0) !== expectedVersion)
         throw new Conflict(current ?? null);
+      const versions = await this.proposalVersions();
       const proposal = proposalSchema.parse({
         ...(input as object),
+        ...((input as { scope?: unknown })?.scope === undefined &&
+        current?.scope !== undefined
+          ? { scope: current.scope }
+          : {}),
         schemaVersion: 1,
         id,
-        version: expectedVersion + 1,
+        version: Math.max(expectedVersion, versions.get(id) ?? 0) + 1,
       });
+      versions.set(id, proposal.version);
+      await this.atomic('proposal-versions.json', Object.fromEntries(versions));
       await this.atomic('proposals.json', [
         ...all.filter((p) => p.id !== id),
         proposal,
@@ -366,6 +407,9 @@ export class Project {
         current = all.find((p) => p.id === id);
       if (!current || current.version !== expectedVersion)
         throw new Conflict(current ?? null);
+      const versions = await this.proposalVersions();
+      versions.set(id, Math.max(current.version, versions.get(id) ?? 0) + 1);
+      await this.atomic('proposal-versions.json', Object.fromEntries(versions));
       await this.atomic(
         'proposals.json',
         all.filter((p) => p.id !== id),
@@ -419,7 +463,11 @@ export class Project {
           error: 'Import would replace existing proposals',
         });
       await this.atomic('snapshot.json', s);
-      if (proposals.length) await this.atomic('proposals.json', proposals);
+      if (proposals.length)
+        await this.atomic(
+          'proposals.json',
+          await this.rememberImportedProposals(proposals),
+        );
     });
     return s;
   }
@@ -427,7 +475,7 @@ export class Project {
     return this.locked(async () => {
       const snapshot = await this.snapshot();
       snapshot.nodes = attachMetrics(snapshot.nodes, documents);
-      snapshot.id = hash(JSON.stringify(snapshot)).slice(0, 24);
+      snapshot.id = randomUUID();
       await this.atomic('snapshot.json', snapshot);
       return snapshot;
     });

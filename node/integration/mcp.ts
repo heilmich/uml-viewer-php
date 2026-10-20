@@ -1,3 +1,4 @@
+import { proposalSchema } from '../core/model.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
@@ -100,10 +101,10 @@ export function createMcp(project: Project) {
         ...base,
         id: z.string(),
         expectedVersion: z.number().int().nonnegative(),
-        proposal: z.object({
-          name: z.string(),
-          layers: z.array(z.any()),
-          omit: z.array(z.string()).optional(),
+        proposal: proposalSchema.omit({
+          schemaVersion: true,
+          id: true,
+          version: true,
         }),
       },
     },

@@ -21,7 +21,7 @@ import {
   type Edge,
 } from '@xyflow/react';
 import dagre from '@dagrejs/dagre';
-import { viewAt } from '../node/core/graph.js';
+import { viewAt, proposalTrail } from '../node/core/graph.js';
 import type {
   Snapshot,
   Proposal,
@@ -107,9 +107,59 @@ function Canvas({
       edges: view.edges.filter((e) => ids.has(e.from) && ids.has(e.to)),
     };
   }, [snapshot, path, proposal, showExternal]);
-  const { fitView } = useReactFlow();
+  const { fitView, setViewport: setFlowViewport } = useReactFlow();
+  const currentView = useRef<ViewState>({
+    path,
+    selectedId: selected,
+    proposalId,
+    ...viewport,
+  });
+  const externalViewport = useRef(false);
+  const update = useCallback(
+    (extra: Partial<ViewState>) => {
+      currentView.current = { ...currentView.current, ...extra };
+      onStateChange?.(currentView.current);
+    },
+    [onStateChange],
+  );
+  useEffect(() => {
+    const before = currentView.current;
+    const next = { ...before, ...state };
+    const viewportChanged =
+      (state.x !== undefined && state.x !== before.x) ||
+      (state.y !== undefined && state.y !== before.y) ||
+      (state.zoom !== undefined && state.zoom !== before.zoom);
+    const pathChanged =
+      (state.path !== undefined && state.path !== before.path) ||
+      (state.proposalId !== undefined &&
+        state.proposalId !== before.proposalId);
+    currentView.current = next;
+    if (state.path !== undefined) setPath(state.path);
+    if (state.selectedId !== undefined) setSelected(state.selectedId);
+    if (state.proposalId !== undefined) setProposal(state.proposalId);
+    if (viewportChanged || pathChanged) {
+      externalViewport.current = true;
+      const v = { x: next.x, y: next.y, zoom: next.zoom };
+      setViewport(v);
+      void setFlowViewport(v);
+      setBundle(null);
+    }
+  }, [
+    state.path,
+    state.selectedId,
+    state.proposalId,
+    state.x,
+    state.y,
+    state.zoom,
+    setFlowViewport,
+  ]);
   const firstFit = useRef(true);
   useEffect(() => {
+    if (externalViewport.current) {
+      externalViewport.current = false;
+      firstFit.current = false;
+      return;
+    }
     if (firstFit.current && state.zoom) {
       firstFit.current = false;
       return;
@@ -120,25 +170,6 @@ function Canvas({
     });
     return () => cancelAnimationFrame(frame);
   }, [path, proposalId, showExternal, fitView]);
-  const currentView = useRef<ViewState>({
-    path,
-    selectedId: selected,
-    proposalId,
-    ...viewport,
-  });
-  const update = useCallback(
-    (extra: Partial<ViewState>) => {
-      currentView.current = { ...currentView.current, ...extra };
-      onStateChange?.(currentView.current);
-    },
-    [onStateChange],
-  );
-  useEffect(() => {
-    if (state.proposalId !== undefined) {
-      setProposal(state.proposalId);
-      currentView.current.proposalId = state.proposalId;
-    }
-  }, [state.proposalId]);
 
   const navigate = (p: string) => {
     setPath(p);
@@ -231,6 +262,7 @@ function Canvas({
     diagram.nodes.find((n) => n.id === selected);
   const pickedBox = diagram.nodes.find((n) => n.id === selected);
   const [session, setSession] = useState('');
+  const trail = proposal ? proposalTrail(proposal, path) : [];
   return (
     <div className="viewer">
       <div className="toolbar">
@@ -312,7 +344,17 @@ function Canvas({
                 </button>
               </React.Fragment>
             ))
-          : path && <span> / {path}</span>}
+          : trail.length
+            ? trail.map((item) => (
+                <React.Fragment key={item.id}>
+                  {' '}
+                  /{' '}
+                  <button onClick={() => navigate(item.id)}>
+                    {item.label}
+                  </button>
+                </React.Fragment>
+              ))
+            : path && <span> / {path}</span>}
         {path && (
           <button
             onClick={() =>
@@ -321,7 +363,7 @@ function Canvas({
                   !path.startsWith('proposal.') &&
                   !path.startsWith('group.')
                   ? path.split('.').slice(0, -1).join('.')
-                  : '',
+                  : (trail.at(-2)?.id ?? ''),
               )
             }
           >

@@ -1,5 +1,6 @@
 import {
   proposalSchema,
+  edgeId,
   type GraphNode,
   type Proposal,
   type Group,
@@ -15,6 +16,49 @@ export function migrateProposals(data: any): Proposal[] {
           nses: (x.nses ?? []).map(entry),
         };
   let input = data.proposals;
+  if (!input && Array.isArray(data.diagrams)) {
+    const flatten = (doc: any): any[] =>
+      Array.isArray(doc.diagrams) ? doc.diagrams.flatMap(flatten) : [doc];
+    input = flatten(data).map((d: any, i: number) => {
+      const nodes = [
+        ...(d.classes ??
+          d.nodes ??
+          d.packages?.flatMap((p: any) => p.classes ?? []) ??
+          []),
+        ...(d.foreign ?? []),
+      ];
+      return {
+        id: `legacy-diagram-${i}`,
+        name: d.title ?? `Diagram ${i + 1}`,
+        layers: d.packages?.map((p: any, j: number) => ({
+          id: p.id ?? `package-${j}`,
+          label: p.label ?? p.id ?? `Package ${j + 1}`,
+          nses:
+            p.classes?.map(
+              (n: any) => n.id ?? n.name.toLowerCase().replace(/\s+/g, '-'),
+            ) ?? [],
+        })) ?? [
+          {
+            id: 'classes',
+            label: d.title ?? 'Classes',
+            nses: nodes
+              .filter((n: any) => !n.foreign && n.shape !== 'oval')
+              .map(
+                (n: any) => n.id ?? n.name.toLowerCase().replace(/\s+/g, '-'),
+              ),
+          },
+        ],
+        scope: {
+          nodeIds: nodes.map(
+            (n: any) => n.id ?? n.name.toLowerCase().replace(/\s+/g, '-'),
+          ),
+          edgeIds: (d.edges ?? []).map((e: any) =>
+            edgeId(e.from, e.to, e.kind ?? 'association', e.label),
+          ),
+        },
+      };
+    });
+  }
   if (!input && !data.proposal && data.packages?.length)
     input = [
       {
@@ -46,6 +90,7 @@ export function migrateProposals(data: any): Proposal[] {
         nses: (l.nses ?? []).map(entry),
       })),
       omit: p.omit ?? [],
+      scope: p.scope,
     }),
   );
 }
@@ -60,14 +105,23 @@ export function attachMetrics(
     for (const doc of documents) {
       if (doc.entries)
         for (const e of doc.entries) {
-          if (e.namespace !== n.ns && e.namespace !== n.id) continue;
+          if (
+            typeof e.namespace !== 'string' ||
+            !e.namespace ||
+            (e.namespace !== n.ns && e.namespace !== n.id)
+          )
+            continue;
           const m: Record<string, unknown> = {};
           if (e.crap !== undefined) m.crap = e.crap;
           if (e.coverage !== undefined) m.coverage = e.coverage;
           if (e.complexity !== undefined) m.complexity = e.complexity;
           members.set(e.name, { ...members.get(e.name), ...m });
         }
-      if (doc.namespace === n.ns || doc.namespace === n.id) {
+      if (
+        typeof doc.namespace === 'string' &&
+        doc.namespace &&
+        (doc.namespace === n.ns || doc.namespace === n.id)
+      ) {
         if (doc.outcomes) {
           const counts: Record<string, number> = {};
           for (const value of Object.values(doc.outcomes) as string[])
@@ -82,7 +136,11 @@ export function attachMetrics(
         doc.nodes ??
         doc.packages?.flatMap((p: any) => p.classes) ??
         [];
-      const m = imported.find((c: any) => c.id === n.id || c.ns === n.ns);
+      const m =
+        imported.find((c: any) => typeof c.id === 'string' && c.id === n.id) ??
+        imported.find(
+          (c: any) => typeof c.ns === 'string' && !!c.ns && c.ns === n.ns,
+        );
       if (m) {
         for (const k of [
           'crap',

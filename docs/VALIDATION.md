@@ -1,13 +1,13 @@
 # Validation report
 
-Validated in the managed Linux cloud environment on 2026-10-19, using Node.js 24.19.0, npm 11.9.0 and Chromium 154.0.8037.57. Source reference: `d8a2c93b5f3e07616b4abd434b8c02768b760516` from the PHP branch. No npm publication or merge is part of this work.
+Initial validation on 2026-10-19; independent review fixes and full suites revalidated on 2026-10-20 in the managed Linux cloud environment, using Node.js 24.19.0, npm 11.9.0 and Chromium 154.0.8037.57. Source reference: `d8a2c93b5f3e07616b4abd434b8c02768b760516` from the PHP branch. No npm publication or merge is part of this work.
 
 | Check | Observed result |
 | --- | --- |
 | Frozen install | `npm ci` succeeded; package-lock v3 retained |
 | Build / type validation | `npm run build` succeeded (TypeScript declarations, standalone browser assets, reusable viewer bundle) |
-| Node test suite | **22 passed, 0 failed, 0 skipped** |
-| Chromium functional test | **1 passed**: namespace/class drill-down, aggregate violation inspector, source escaping, explicit session context isolation, proposal create/edit/delete, reload persistence and rescan |
+| Node test suite | **34 passed, 0 failed, 0 skipped** |
+| Chromium functional test | **3 passed**: controlled embedding state and nested proposal navigation, plus namespace/class drill-down, aggregate violation inspector, source escaping, explicit session context isolation, proposal create/edit/delete, reload persistence and rescan |
 | Legacy PHP semantic fixture | 25 source files, 25 declarations + 6 collapsed external nodes, 59 typed relations; node IDs, relationship semantics, violations and member text match committed `php-shop.legacy.edn` |
 | Architecture rule | Exactly one intentional Domain → Infrastructure violating dependency, `Domain.Model.Order` → `Infrastructure.Clock.SystemClock` |
 | PHP syntax / resolution | Aliases, grouped use, multiple namespaces/declarations, case-insensitive targets and stable identity, promoted readonly properties, enums/traits, DNF/intersection/union/nullable types, typed constants, attributes, anonymous classes, dynamic-target warnings, syntax errors and partial exit 2 |
@@ -22,6 +22,8 @@ Validated in the managed Linux cloud environment on 2026-10-19, using Node.js 24
 The installed CLI also scanned `php-shop` with a PATH containing **only Node**, producing a complete graph and the expected violation. Git commit metadata became null as intended; source fingerprints remained present. Stdio MCP was likewise tested with only Node on PATH. Browser/OS shared libraries and the shell used by npm scripts are normal platform prerequisites, not legacy-language runtimes.
 
 ## Real-project measurement
+
+Baseline measured on 2026-10-19; timings were not rerun after the review fixes.
 
 Repository: [symfony/console](https://github.com/symfony/console), branch `7.3`, commit `a28c3e5b4df406e8fae8e9b18c40557b5dfc430c`. No dependencies or analyzed-project tests were installed or run. Its test/build/dependency directories were excluded by the scanner.
 
@@ -42,6 +44,6 @@ node scripts/benchmark.mjs /tmp/console /tmp/console-policy.json /tmp/benchmark.
 
 The original JVM/PHP/desktop suite was retained as a reference, not executed in the Node-only workflow. The Node tests explicitly port representative behavior; they do not prove equivalence for every possible language construct. Static analysis does not expand macros or evaluate runtime import/class targets. The PHP parser's promoted-DNF grammar fallback is documented in `MIGRATION.md`. Historical custom diagram coordinates are not reproduced; proposal editing is validated JSON.
 
-The production browser build reports a chunk-size advisory (roughly 519 kB JavaScript before gzip, 163 kB gzip). This does not fail the build. The environment's Chromium reports the harmless FORCE_COLOR/NO_COLOR warning during Playwright execution.
+The production browser build reports a chunk-size advisory (roughly 521 kB JavaScript before gzip, 163 kB gzip). This does not fail the build. The environment's Chromium reports the harmless FORCE_COLOR/NO_COLOR warning during Playwright execution.
 
-No target host application was supplied; the embedding API and agent-neutral events are implemented and documented, but integration into a separate application is outside this task. Licensing remains `UNLICENSED` pending the repository owner's decision. No agent settings were overwritten, no agents were started, and no unrelated processes were terminated.
+No target host application was supplied; the embedding API and agent-neutral events are implemented and documented, but integration into a separate application is outside this task. Licensing remains `UNLICENSED` pending the repository owner's decision. No agent settings were overwritten and no unrelated processes were terminated. An independent GPT-6.1 Sol reviewer was run at high reasoning effort at the user’s request; all 13 confirmed findings were fixed and rechecked. See [REVIEW.md](REVIEW.md) for the findings and regression coverage.
