@@ -3,6 +3,7 @@
             [quil.core :as q]
             [speclj.core :refer :all]
             [uml-viewer.application.detail :as detail]
+            [uml-viewer.adapters.agent :as agent]
             [uml-viewer.adapters.draw :as draw]
             [uml-viewer.engine.compose :as compose]
             [uml-viewer.application.document :as document]
@@ -638,7 +639,7 @@
               (should (fn? (:key-released @opts)))
               (should= :s ((:key-released @opts) :s {:key :esc}))))))))
 
-(describe "grok session"
+(describe "companion session"
   (it "mails discussion context for the real diagram and a proposal"
     (let [got (atom nil)]
       (with-redefs [sketch/request-agent! (fn [_ op extra]
@@ -679,15 +680,16 @@
   (it "names a tmux session and attaches Terminal to it"
     (let [cwd "/tmp/proj"
           sid (sketch/session-id cwd)
-          args (sketch/new-session-args cwd)
+          args (sketch/new-session-args cwd sid (agent/config {}))
           script (sketch/osascript (sketch/attach-command sid) sid)
           [br bg bb] (sketch/rgb-16 draw/bg)
           [gr gg gb] (sketch/rgb-16 draw/gold)]
       (should (some #{sid} args))
       (should= ["kill-session" "-t" sid] (sketch/kill-session-args sid))
       (should (some #{"new-session"} args))
-      (should (some #{"--yolo"} args))
-      (should (some #{"--rules"} args))
+      (should (some #{"--append-system-prompt"} args))
+      (should (some #{"acceptEdits"} args))
+      (should= sketch/launch-prompt (last args))
       (should (some #{sketch/standing-rules} args))
       (should (some #{sketch/launch-prompt} args))
       (should (re-find #"On launch" sketch/standing-rules))
@@ -703,8 +705,12 @@
       (should (re-find #"\./uml --restart" sketch/standing-rules))
       (should (re-find #"kills only this companion" sketch/standing-rules))
       (should (re-find #"respawns" sketch/standing-rules))
+      (should (re-find #":lang :php" sketch/standing-rules))
+      (should (re-find #"uml-viewer.main.ir-generator" sketch/standing-rules))
+      (should-not (re-find #"Grok" sketch/standing-rules))
       (should-not (re-find #":reload" sketch/standing-rules))
-      (should (some #{"GROK_THEME=terminal"} args))
+      (should (some #{"COLORTERM=truecolor"} args))
+      (should-not (some #{"GROK_THEME=terminal"} args))
       (should-not (some #{"status"} args))
       (should (re-find (re-pattern (str "tmux attach -t " sid)) (sketch/attach-command sid)))
       (should (re-find #"tell application \"Terminal\"" script))
@@ -719,6 +725,15 @@
       (should (re-find (re-pattern (str "cursor color of grokTab to \\{" gr ", " gg ", " gb "\\}"))
                        script))))
 
+  (it "starts Grok with its own flags and theme when chosen"
+    (let [sid (sketch/session-id "/tmp/proj")
+          args (sketch/new-session-args "/tmp/proj" sid (agent/config {"UML_VIEWER_AGENT" "grok"}))]
+      (should (some #{"--yolo"} args))
+      (should (some #{"--rules"} args))
+      (should (some #{sketch/standing-rules} args))
+      (should (some #{sketch/launch-prompt} args))
+      (should (some #{"GROK_THEME=terminal"} args))))
+
   (it "closes only this viewer's Terminal window by id"
     (let [script (sketch/close-terminal-script "42")]
       (should (re-find #"exists process \"Terminal\"" script))
@@ -732,9 +747,17 @@
       (should-not (re-find #"close" script))
       (should-not (re-find #"Grok" script))))
 
+  (it "wakes the default agent with text, a pause, then Enter"
+    (let [sid "uml-viewer-proj-abc"
+          steps (sketch/notify-steps sid (agent/config {}))]
+      (should= [["send-keys" "-t" sid "-l" sketch/wake-message]
+                [:sleep 150]
+                ["send-keys" "-t" sid "C-m"]]
+               steps)))
+
   (it "wakes Grok with text, a pause, then Enter as separate keys"
     (let [sid "uml-viewer-proj-abc"
-          steps (sketch/notify-steps sid)]
+          steps (sketch/notify-steps sid (agent/config {"UML_VIEWER_AGENT" "grok"}))]
       (should= ["send-keys" "-t" sid "-l" sketch/wake-message]
                (first steps))
       (should= [:sleep 150] (second steps))
@@ -1003,7 +1026,7 @@
                      (:mail-status (call 'on-main-press (state) (at r nil)))))
           (with-redefs [uml-viewer.adapters.sketch/request-regen!
                         (fn [_root] {:woke? false})]
-            (should= "Regen queued; Grok session not attached."
+            (should= "Regen queued; companion agent not attached."
                      (:mail-status (call 'on-main-press (state) (at r nil)))))
           (should (string? @woke))))))
 

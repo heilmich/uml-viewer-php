@@ -1,0 +1,2 @@
+# Bundled PHP dependencies (nikic/php-parser for the PHP scanner).
+php/vendor/** linguist-vendored
